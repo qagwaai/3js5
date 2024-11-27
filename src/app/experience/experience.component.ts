@@ -1,41 +1,17 @@
-import { DOCUMENT } from '@angular/common';
 import {
   CUSTOM_ELEMENTS_SCHEMA,
   ChangeDetectionStrategy,
   Component,
-  Directive,
-  ElementRef,
-  inject,
-  signal,
-  viewChild,
+  viewChild
 } from '@angular/core';
-import { extend, getLocalState, injectBeforeRender, injectObjectEvents } from 'angular-three';
-import { BoxGeometry, Mesh, MeshBasicMaterial } from 'three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
-import { Cube } from './cube.component';
 import { NgtsPointMaterial } from 'angular-three-soba/materials';
 import { NgtsPointsBuffer } from 'angular-three-soba/performances';
+import { NgtsLine } from 'angular-three-soba/abstractions';
 import { random } from 'maath';
-
-@Directive({
-  selector: '[cursorPointer]',
-  standalone: true,
-})
-export class CursorPointer {
-  constructor() {
-    const document = inject(DOCUMENT);
-    const hostElement = inject<ElementRef<Mesh>>(ElementRef);
-    const mesh = hostElement.nativeElement;
-
-    const localState = getLocalState(mesh);
-    if (!localState) return;
-
-    injectObjectEvents(() => mesh, {
-      pointerover: () => void (document.body.style.cursor = 'pointer'),
-      pointerout: () => void (document.body.style.cursor = 'default'),
-    });
-  }
-}
+import { Cube } from './components/cube.component';
+import { Sphere } from './components/sphere.component';
+import { DoubleSide } from 'three';
 
 @Component({
   standalone: true,
@@ -52,42 +28,46 @@ export class CursorPointer {
 			</ngts-points-buffer>
 		</ngt-group>
 
-    <ngt-mesh
-      #mesh
-      cursorPointer
-      (click)="clicked.set(!clicked())"
-      (pointerover)="hovered.set(true)"
-      (pointerout)="hovered.set(false)"
-      [scale]="clicked() ? 1.5 : 1"
-    >
-      <ngt-box-geometry />
-      <ngt-mesh-basic-material [color]="hovered() ? 'hotpink' : 'orange'" />
-    </ngt-mesh>
+    <app-sphere [position]="[0, 1.5, 0]" />
     <app-cube [position]="[1.5, 0, 0]" />
+    <app-cube [position]="[-1.5, 0, 0]" />
+
+    <ngts-line
+					[points]="[0, 0, 0, 0, 3, 0]"
+					[options]="{
+						raycast: null,
+						side: DoubleSide,
+						polygonOffset: true,
+						polygonOffsetFactor: -10,
+						renderOrder: 1,
+						fog: false,
+						transparent: true,
+						lineWidth: 3,
+						color: 'red',
+						opacity: 100,
+						depthTest: false,
+					}"
+				/>
 
     <ngts-orbit-controls [options]="{ enableZoom: true, enablePan: true }" />
   `,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Cube, CursorPointer,NgtsPointsBuffer, NgtsPointMaterial, NgtsOrbitControls],
+  imports: [
+    Cube, 
+    Sphere, 
+    NgtsLine, 
+    NgtsPointsBuffer, 
+    NgtsPointMaterial, 
+    NgtsOrbitControls
+  ],
 })
 export class Experience {
   protected readonly Math = Math;
+  protected readonly DoubleSide = DoubleSide;
   protected readonly sphere = random.inSphere(new Float32Array(5000), { radius: 1.5 }) as Float32Array;
 
 	private pointsBufferRef = viewChild.required(NgtsPointsBuffer);
 
-  private meshRef = viewChild.required<ElementRef<Mesh>>('mesh');
-
-  protected hovered = signal(false);
-  protected clicked = signal(false);
-
-  constructor() {
-    extend({ Mesh, BoxGeometry, MeshBasicMaterial });
-    injectBeforeRender(({ delta }) => {
-      const mesh = this.meshRef().nativeElement;
-      mesh.rotation.x += delta;
-      mesh.rotation.y += delta;
-    });
-  }
+  constructor() { }
 }
